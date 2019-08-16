@@ -4,7 +4,7 @@ from __future__ import print_function, division
 from builtins import input
 from io import open
 
-import sys, mutagen, argparse, traceback
+import sys, mutagen, argparse, traceback, wave
 
 gms = {
     "dance-single": [4,"dancesingle"],
@@ -33,7 +33,7 @@ def get_notes(fn, sim):
                 note[-1][0][1] = sim[i].replace("#METER:", "").replace(";", "").replace('\n', '').replace('\r', '')
             elif "#NOTES:" in sim[i]:
                 notestr = ""
-                for a in range(i+1,len(sim)):
+                for a in range(i + 1, len(sim)):
                     if "//" not in sim[a]:
                         tempstr = sim[a].replace('\n', '').replace('\r', '').split('//')[0]
                         if ';' in tempstr:
@@ -63,7 +63,7 @@ def get_notes(fn, sim):
                         elif j == 3:
                             note[-1][0][1] = sim[i].strip().replace(":", "").replace('\n', '').replace('\r', '')
                     i += 1
-                for a in range(i+1,len(sim)):
+                for a in range(i + 1, len(sim)):
                     if "//" not in sim[a]:
                         tempstr = sim[a].replace('\n', '').replace('\r', '').split('//')[0]
                         if ';' in tempstr:
@@ -137,7 +137,7 @@ def notetofract(arr): # RED=0, BLUE=2, YELLOW=4, GREEN=5
         for note in range(len(arr[beat])):
             if any(x in arr[beat][note] for x in valid):
                 color = 5
-                fraction = note/len(arr[beat])
+                fraction = note / len(arr[beat])
                 if fraction % 0.25 == 0:
                     color = 0
                 elif fraction % 0.125 == 0:
@@ -173,47 +173,47 @@ def sumfreezetime(arr): # measure time between 2 and 3 in same lanes and add up 
         for note in range(len(arr[beat])):
             for i in range(gm_num):
                 if arr[beat][note][i] == '2' or arr[beat][note][i] == '4':
-                    last[i] = beat+(note/len(arr[beat]))
+                    last[i] = beat + (note / len(arr[beat]))
                 elif arr[beat][note][i] == '3':
                     if last[i] == -1:
                         sys.exit("This simfile does not have correct holds and thus is broken. Aborting...")
-                    sum += beat+(note/len(arr[beat])) - last[i]
+                    sum += beat + (note / len(arr[beat])) - last[i]
                     last[i] = -1
     return sum
    
 def getbpmchanges(bpm, stop): # check beat order and just make a list of bpms in order with stops inserted as 0
     stop = [[s[0], 0] for s in stop]
-    all = bpm+stop
+    all = bpm + stop
     all.sort(key=lambda x: x[0])
     return [bpm[1] for bpm in all]
     
 def gr_stream(note, song):
     sum = sum1and2(note)
-    npm = (60*sum) // songlength(song)
-    return (npm-139)*100/161 if npm > 300 else npm/3
+    npm = (60 * sum) // songlength(song)
+    return (npm - 139) * 100 / 161 if npm > 300 else npm / 3
     
 def gr_voltage(note, song):
     avgbpm = 60 * len(note) / songlength(song)
     i = 0
     maxdensity = 0
-    for i in range(len(note)-4):
+    for i in range(len(note) - 4):
         temp = sum1and2(note[i:i+4])
         if temp > maxdensity:
             maxdensity = temp
     if i == 0:
         maxdensity = sum1and2(note)
-    maxnpm = avgbpm*maxdensity//4
-    return (maxnpm+330)*10/93 if maxnpm > 600 else maxnpm/6
+    maxnpm = avgbpm * maxdensity // 4
+    return (maxnpm + 330) * 10 / 93 if maxnpm > 600 else maxnpm / 6
 
 def gr_air(note, song):
     jpm = 60*(sumjumps(note)+summines(note))//songlength(song)
-    return (jpm+5)*5/3 if jpm > 55 else jpm*20/11
+    return (jpm + 5) * 5 / 3 if jpm > 55 else jpm * 20 / 11
     
 def gr_freeze(note):
     freezelen = sumfreezetime(note)
     #print("Total freeze length: %s" % freezelen)
-    farrowrate = 10000*freezelen//len(note)
-    return (farrowrate+2484)*100/5984 if farrowrate > 3500 else farrowrate/35
+    farrowrate = 10000 * freezelen // len(note)
+    return (farrowrate + 2484) * 100 / 5984 if farrowrate > 3500 else farrowrate / 35
     
 def gr_chaos(note, song, bpms, stops):
     sum = sum1and2(note)
@@ -221,23 +221,23 @@ def gr_chaos(note, song, bpms, stops):
     # abnormality = sum*color/distance
     basechaos = 0
     for f in fract:
-        basechaos += sum*f[0]/f[1] # abnormality
-    bpmchanges = getbpmchanges(bpms,stops)
+        basechaos += sum * f[0] / f[1] # abnormality
+    bpmchanges = getbpmchanges(bpms, stops)
     totalbpmchange = 0
     i = 0
     while i < len(bpmchanges):
         if bpmchanges[i] != 0:
             if i+1 < len(bpmchanges):
-                totalbpmchange += abs(bpmchanges[i]-bpmchanges[i+1])
+                totalbpmchange += abs(bpmchanges[i] - bpmchanges[i + 1])
             else:
                 totalbpmchange += bpmchanges[i]
         elif i+1 < len(bpmchanges):
-            totalbpmchange += bpmchanges[i+1]
+            totalbpmchange += bpmchanges[i + 1]
         i += 1
-    bpmchangepm = 60*len(bpmchanges)/songlength(song)
-    chaosdegree = basechaos*(1+(bpmchangepm/1500))
-    chaosunit = chaosdegree*100/songlength(song)
-    return (chaosunit+21605)*100/23605 if chaosunit > 2000 else chaosunit/20
+    bpmchangepm = 60 * len(bpmchanges) / songlength(song)
+    chaosdegree = basechaos * (1 + (bpmchangepm / 1500))
+    chaosunit = chaosdegree * 100 / songlength(song)
+    return (chaosunit + 21605) * 100 / 23605 if chaosunit > 2000 else chaosunit / 20
     
 def main():
     parser = argparse.ArgumentParser(description='Calculate groove radar for StepMania charts.')
@@ -267,6 +267,7 @@ def main():
             print("Air: %s" % gr_air(note[1], song))
             print("Freeze: %s" % gr_freeze(note[1]))
             print("Chaos: %s" % gr_chaos(note[1], song, bpms, stops))
+            print()
 
 if __name__ == '__main__':
     main()
