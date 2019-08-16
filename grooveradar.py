@@ -193,7 +193,7 @@ def getbpmchanges(bpm, stop): # check beat order and just make a list of bpms in
             del all[i]
         else:
             i += 1
-    print(all)
+    #print(all)
     return [a[1] for a in all]
     
 def gr_stream(note, song):
