@@ -183,16 +183,39 @@ def sumfreezetime(arr): # measure time between 2 and 3 in same lanes and add up 
     return sum
    
 def getbpmchanges(bpm, stop): # check beat order and just make a list of bpms in order with stops inserted as 0
-    stop = [[float(s[0]), 0] for s in stop]
-    bpm = [[float(b[0]), float(b[1])] for b in bpm]
+    stop = [[float(s[0]), 0, float(s[1])] for s in stop]
+    bpm = [[float(b[0]), float(b[1]), 0] for b in bpm]
     all = bpm + stop
-    all.sort(key=lambda x: x[0])
-    i = 0
-    while i < len(all)-1:
-        if all[i][0] == all[i+1][0] and all[i+1][1] == 0:
-            del all[i]
-        else:
-            i += 1
+    all.sort(key=lambda x: (x[0], -x[2]))
+    #print(all)
+
+    # delete bpm changes at the same time as stop
+    if False:
+        i = 0
+        while i < len(all)-1:
+            if all[i][0] == all[i+1][0] and all[i+1][1] == 0:
+                del all[i]
+            else:
+                i += 1
+
+    # add bpm after stop if bpm the same
+    if True:
+        i = 0
+        while i < len(all)-1:
+            if all[i][0]+all[i][2] < all[i+1][0] and all[i][1] == 0:
+                all.insert(i+1, [all[i][0], all[i-1][1], 0])
+            else:
+                i += 1
+    
+    # delete decimal bpms that aren't multiples of 0.5
+    if True:
+        i = 0
+        while i < len(all)-1:
+            if all[i][1] % 0.5:
+                del all[i]
+            else:
+                i += 1
+    
     #print(all)
     return [a[1] for a in all]
     
@@ -241,13 +264,13 @@ def gr_chaos(note, song, bpms, stops):
             lastnonzero = bpmchanges[i]
             if i+1 < len(bpmchanges):
                 totalbpmchange += abs(bpmchanges[i] - bpmchanges[i + 1])
-            else:
-                totalbpmchange += bpmchanges[i]
+                i += 1
         elif i+1 < len(bpmchanges):
             totalbpmchange += bpmchanges[i + 1] if bpmchanges[i + 1] > 0 else lastnonzero
         else:
             totalbpmchange += lastnonzero
         i += 1
+    #print(totalbpmchange)
     bpmchangepm = 60 * totalbpmchange / songlength(song)
     chaosdegree = basechaos * (1 + (bpmchangepm / 1500))
     chaosunit = chaosdegree * 100 / songlength(song)
