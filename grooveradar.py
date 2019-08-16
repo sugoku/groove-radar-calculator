@@ -9,10 +9,15 @@ import sys, mutagen, argparse, traceback
 gms = {
     "dance-single": [4,"dancesingle"],
     "pump-single": [5,"pumpsingle"],
+    "pump-single-p": [5,"pumpsingle"],
     "solo": [6,"solo"],
     "dance-double": [8,"dancedouble"], 
     "technomotion": [9,"technomotion"],
-    "pump-double": [10,"pumpdouble"]
+    "pump-halfdouble": [10,"pumpdouble"],
+    "pump-double": [10,"pumpdouble"],
+    "pump-double-p": [10,"pumpdouble"],
+    "pump-couple": [10,"pumpdouble"],
+    "pump-routine": [10,"pumpdouble"],
 }
 
 def get_notes(fn, sim):
@@ -104,7 +109,7 @@ def get_gm_num(gm): # how many arrows per gamemode
     try:
         return gms[gm][0]
     except:
-        #print(traceback.format_exc())
+        print(traceback.format_exc())
         print("Could not determine gamemode, defaulting to 4 arrows")
         return 4
 
@@ -115,16 +120,17 @@ def songlength(song):
         return song.getnframes() / song.getframerate()
     
 def sum1and2(arr):
-    sum = 0
+    summed = 0
+    valid = ['1','2','4','X','x','Y','y','S','v']
     for beat in arr:
         for note in beat:
-            sum += int(note.count('1') + note.count('2') + note.count('4') >= 1) # to include jumps as two notes add the counts directly
-    return sum
+            summed += int(sum([note.count(x) for x in valid]) >= 1) # to include jumps as two notes add the counts directly
+    return summed
     
 def notetofract(arr): # RED=0, BLUE=2, YELLOW=4, GREEN=5 
     # create a list of notes like (color int, distance from last note in beats)
     # this includes 1, 2, 4, and M
-    valid = ['1','2','4','M']
+    valid = ['1','2','4','M','X','x','Y','y','S','v']
     fract = []
     last = 0
     for beat in range(len(arr)):
@@ -144,18 +150,19 @@ def notetofract(arr): # RED=0, BLUE=2, YELLOW=4, GREEN=5
     return fract
 
 def sumjumps(arr): # any with 1/2 at same time
-    sum = 0
+    summed = 0
+    valid = ['1','2','4','X','x','Y','y','S','v']
     for beat in arr:
         for note in beat:
-            if note.count('1') + note.count('2') + note.count('4') >= 2:
-                sum += 1
-    return sum
+            if sum([note.count(x) for x in valid]) >= 2:
+                summed += 1
+    return summed
     
 def summines(arr): # just M
     sum = 0
     for beat in arr:
         for note in beat:
-            sum += note.count('M')
+            sum += int(note.count('M') >= 1)
     return sum
     
 def sumfreezetime(arr): # measure time between 2 and 3 in same lanes and add up fraction based on array length
