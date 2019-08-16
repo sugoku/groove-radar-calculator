@@ -80,6 +80,7 @@ def get_notes(fn, sim):
     return note[:-1]
     
 def get_bpms(sim):
+    #print(sim)
     for i in range(len(sim)):
         if "#BPMS:" in sim[i]:
             b = ""
@@ -182,10 +183,18 @@ def sumfreezetime(arr): # measure time between 2 and 3 in same lanes and add up 
     return sum
    
 def getbpmchanges(bpm, stop): # check beat order and just make a list of bpms in order with stops inserted as 0
-    stop = [[s[0], 0] for s in stop]
+    stop = [[float(s[0]), 0] for s in stop]
+    bpm = [[float(b[0]), float(b[1])] for b in bpm]
     all = bpm + stop
     all.sort(key=lambda x: x[0])
-    return [bpm[1] for bpm in all]
+    i = 0
+    while i < len(all)-1:
+        if all[i][0] == all[i+1][0] and all[i+1][1] == 0:
+            del all[i]
+        else:
+            i += 1
+    print(all)
+    return [a[1] for a in all]
     
 def gr_stream(note, song):
     sum = sum1and2(note)
@@ -223,18 +232,23 @@ def gr_chaos(note, song, bpms, stops):
     for f in fract:
         basechaos += sum * f[0] / f[1] # abnormality
     bpmchanges = getbpmchanges(bpms, stops)
+    #print(bpmchanges)
     totalbpmchange = 0
     i = 0
+    lastnonzero = bpmchanges[0]
     while i < len(bpmchanges):
         if bpmchanges[i] != 0:
+            lastnonzero = bpmchanges[i]
             if i+1 < len(bpmchanges):
                 totalbpmchange += abs(bpmchanges[i] - bpmchanges[i + 1])
             else:
                 totalbpmchange += bpmchanges[i]
         elif i+1 < len(bpmchanges):
-            totalbpmchange += bpmchanges[i + 1]
+            totalbpmchange += bpmchanges[i + 1] if bpmchanges[i + 1] > 0 else lastnonzero
+        else:
+            totalbpmchange += lastnonzero
         i += 1
-    bpmchangepm = 60 * len(bpmchanges) / songlength(song)
+    bpmchangepm = 60 * totalbpmchange / songlength(song)
     chaosdegree = basechaos * (1 + (bpmchangepm / 1500))
     chaosunit = chaosdegree * 100 / songlength(song)
     return (chaosunit + 21605) * 100 / 23605 if chaosunit > 2000 else chaosunit / 20
@@ -257,10 +271,17 @@ def main():
         song = mutagen.File(args.audfn)
     
     with open(args.fn, 'r') as f:
-        notes = get_notes(args.fn, f.readlines())
+        lines = f.readlines()
+        notes = get_notes(args.fn, lines)
+        if args.fn.split('.')[1] == 'sm':
+            bpms = get_bpms(lines)
+            stops = get_stops(lines)
         for note in notes:
-            bpms = get_bpms(f.readlines()[note[2][0]:note[2][1]+1])
-            stops = get_stops(f.readlines()[note[2][0]:note[2][1]+1])
+            #print(note[2])
+            #print(len(lines))
+            if args.fn.split('.')[1] == 'ssc':
+                bpms = get_bpms(lines[note[2][0]:note[2][1]+1])
+                stops = get_stops(lines[note[2][0]:note[2][1]+1])
             print(note[0])
             print("Stream: %s" % gr_stream(note[1], song))
             print("Voltage: %s" % gr_voltage(note[1], song))
